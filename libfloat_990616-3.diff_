@@ -1,0 +1,270 @@
+--- libfloat-990616.orig/Makefile
++++ libfloat-990616/Makefile
+@@ -4,15 +4,15 @@
+ #CC=gcc -g -O2 -freg-struct-return -D__LIBFLOAT__
+ AR=ar
+ 
+-all: libfloat.a libfloat.so
++all: libfloat.a libfloat.so.1
+ 
+ libfloat.a: softfloat.o fplib_glue.o
+ 	rm -f libfloat.a
+ 	$(AR) cq libfloat.a softfloat.o fplib_glue.o
+ 
+-libfloat.so: softfloat.os fplib_glue.os
+-	rm -f libfloat.so
+-	gcc -shared softfloat.os fplib_glue.os -o libfloat.so
++libfloat.so.1: softfloat.os fplib_glue.os
++	rm -f libfloat.so.1
++	gcc -shared -Wl,-soname,libfloat.so.1 softfloat.os fplib_glue.os -o libfloat.so.1
+ 
+ softfloat.o: softfloat/bits64/softfloat.c
+ 	$(CC) -c -o softfloat.o -Isoftfloat/bits64/ARM-gcc softfloat/bits64/softfloat.c
+@@ -26,14 +26,15 @@
+ fplib_glue.os: fplib_glue.S
+ 	$(CC) -fpic -c -o fplib_glue.os fplib_glue.S
+ 
+-install: libfloat.a libfloat.so
+-	cp -a libfloat.a /usr/lib
+-	cp -a libfloat.so /usr/lib
+-	ldconfig
++install: libfloat.a libfloat.so.1
++	cp -a libfloat.a $(DESTDIR)/usr/lib
++	cp -a libfloat.so.1 $(DESTDIR)/usr/lib
++	cd $(DESTDIR)/usr/lib; ln -s libfloat.so.1 libfloat.so
++	#ldconfig
+ 
+ clean: 
+ 	rm -f *.o
+ 	rm -f *.os
+ 	rm -f libfloat.a
+-	rm -f libfloat.so
++	rm -f libfloat.so.1
+ 	rm -f *~
+--- libfloat-990616.orig/debian/changelog
++++ libfloat-990616/debian/changelog
+@@ -0,0 +1,27 @@
++libfloat (990616-3) unstable; urgency=low
++
++  * New maintainer.  (Closes: #90878) 
++
++ -- Philip Blundell <pb@debian.org>  Sun, 18 Nov 2001 18:36:32 +0000
++
++libfloat (990616-2) unstable; urgency=low
++
++  * Set maintainer to Debian QA Group <packages@qa.debian.org>.
++  * Did FHS transition.
++  * Removed call to ldconfig from Makefile, and added call to
++    ldconfig in postint and postrm scripts.
++  * Added call to dh_makeshlibs in binary-arch target of rules file.
++  * Added Build-depends on debhelper
++  * Raised Standards-version to 3.5.0.
++
++ -- Bas Zoetekouw <bas@debian.org>  Sat,  4 Aug 2001 14:45:18 +0200
++
++libfloat (990616-1) unstable; urgency=low
++
++  * Initial Release.
++
++ -- Jim Pick <jim@jimpick.com>  Sat, 17 Jul 1999 09:27:27 -0700
++
++Local variables:
++mode: debian-changelog
++End:
+--- libfloat-990616.orig/debian/copyright
++++ libfloat-990616/debian/copyright
+@@ -0,0 +1,46 @@
++This package was debianized by root <jim@jimpick.com> on
++Sat, 17 Jul 1999 09:27:27 -0700.
++
++It was downloaded from ftp://ftp.netwinder.org/users/s/scottb/libfloat/
++
++Upstream Author(s):  Scott Bambrough <scott.bambrough@rebel.com>
++
++       Based on SoftFloat code from:
++
++           http://HTTP.CS.Berkeley.EDU/~jhauser/arithmetic/softfloat.html
++
++           by John Hauser <jhauser@cs.berkeley.edu>
++
++Copyright:
++
++
++===============================================================================
++
++This C source file is part of the SoftFloat IEC/IEEE Floating-point
++Arithmetic Package, Release 2.
++
++Written by John R. Hauser.  This work was made possible in part by the
++International Computer Science Institute, located at Suite 600, 1947 Center
++Street, Berkeley, California 94704.  Funding was partially provided by the
++National Science Foundation under grant MIP-9311980.  The original version
++of this code was written as part of a project to build a fixed-point vector
++processor in collaboration with the University of California at Berkeley,
++overseen by Profs. Nelson Morgan and John Wawrzynek.  More information
++is available through the web page `http://HTTP.CS.Berkeley.EDU/~jhauser/
++arithmetic/softfloat.html'.
++
++THIS SOFTWARE IS DISTRIBUTED AS IS, FOR FREE.  Although reasonable effort
++has been made to avoid it, THIS SOFTWARE MAY CONTAIN FAULTS THAT WILL AT
++TIMES RESULT IN INCORRECT BEHAVIOR.  USE OF THIS SOFTWARE IS RESTRICTED TO
++PERSONS AND ORGANIZATIONS WHO CAN AND WILL TAKE FULL RESPONSIBILITY FOR ANY
++AND ALL LOSSES, COSTS, OR OTHER PROBLEMS ARISING FROM ITS USE.
++
++Derivative works are acceptable, even for commercial purposes, so long as
++(1) they include prominent notice that the work is derivative, and (2) they
++include prominent notice akin to these three paragraphs for those parts of
++this code that are retained.
++
++===============================================================================
++
++
++
+--- libfloat-990616.orig/debian/rules
++++ libfloat-990616/debian/rules
+@@ -0,0 +1,78 @@
++#!/usr/bin/make -f
++#-*- makefile -*-
++# Made with the aid of dh_make, by Craig Small
++# Sample debian/rules that uses debhelper. GNU copyright 1997 by Joey Hess.
++# This version is for a hypothetical package that builds an
++# architecture-dependant package, as well as an architecture-independant
++# package.
++
++package=libfloat
++
++# Uncomment this to turn on verbose mode. 
++#export DH_VERBOSE=1
++
++build: build-stamp
++build-stamp:
++	dh_testdir
++
++	$(MAKE)
++	touch build-stamp
++
++clean:
++	dh_testdir
++	dh_testroot
++	rm -f build-stamp install-stamp
++
++	# Add here commands to clean up after the build process.
++	-$(MAKE) clean
++
++	dh_clean
++
++install: install-stamp
++install-stamp: build-stamp
++	dh_testdir
++	dh_testroot
++	dh_clean -k
++	dh_installdirs
++
++	# Add here commands to install the package into debian/tmp.
++	$(MAKE) install DESTDIR=`pwd`/debian/tmp
++
++	touch install-stamp
++
++# Build architecture-independent files here.
++binary-indep: build install
++
++binary-arch: build install
++#	dh_testversion
++	dh_testdir -a
++	dh_testroot -a
++	dh_installdocs -a
++	dh_installexamples -a
++	dh_movefiles -a
++	dh_installmenu -a
++#	dh_installemacsen -a
++#	dh_installinit -a
++	dh_installcron -a
++	dh_installmanpages -a
++#	dh_undocumented
++	dh_installchangelogs -a 
++	dh_link -a
++	dh_strip -a
++	dh_compress -a
++	dh_fixperms -a
++	# You may want to make some executables suid here
++	dh_suidregister -a
++	dh_makeshlibs -a
++	dh_installdeb -a
++#	dh_perl -a
++	dh_shlibdeps -a
++	dh_gencontrol -a
++	dh_md5sums -a
++	dh_builddeb -a
++
++source diff:                                                                  
++	@echo >&2 'source and diff are obsolete - use dpkg-source -b'; false
++
++binary: binary-indep binary-arch
++.PHONY: build clean binary-indep binary-arch binary
+--- libfloat-990616.orig/debian/control
++++ libfloat-990616/debian/control
+@@ -0,0 +1,26 @@
++Source: libfloat
++Section: devel
++Priority: optional
++Maintainer: Philip Blundell <pb@debian.org>
++Standards-Version: 3.5.0
++Build-Depends: debhelper
++
++Package: libfloat1
++Architecture: arm
++Depends: ${shlibs:Depends}
++Description: Soft floating point library
++ The libfloat library is used with gcc and the -msoft-float option
++ to handle floating point math operations (useful on machines without
++ floating point hardware).
++
++Package: libfloat1-dev
++Architecture: arm
++Depends: libfloat1 (= ${Source-Version}), libc6-dev
++Provides: libfloat-dev
++Conflicts: libfloat-dev
++Description: Soft floating point library - development
++ The libfloat library is used with gcc and the -msoft-float option
++ to handle floating point math operations (useful on machines without
++ floating point hardware).
++ .
++ This package contains the static development library and symlink.
+--- libfloat-990616.orig/debian/postinst
++++ libfloat-990616/debian/postinst
+@@ -0,0 +1,8 @@
++#!/bin/sh
++
++#DEBHELPER#
++
++if [ "$1" = "configure" ]; then
++  ldconfig
++fi
++
+--- libfloat-990616.orig/debian/docs
++++ libfloat-990616/debian/docs
+@@ -0,0 +1,4 @@
++softfloat/README.txt
++softfloat/softfloat-source.txt
++softfloat/softfloat.txt
++softfloat/timesoftfloat.txt
+--- libfloat-990616.orig/debian/dirs
++++ libfloat-990616/debian/dirs
+@@ -0,0 +1 @@
++usr/lib
+--- libfloat-990616.orig/debian/libfloat1-dev.files
++++ libfloat-990616/debian/libfloat1-dev.files
+@@ -0,0 +1,2 @@
++usr/lib/*.so
++usr/lib/*.a
+--- libfloat-990616.orig/debian/postrm
++++ libfloat-990616/debian/postrm
+@@ -0,0 +1,8 @@
++#!/bin/sh
++
++#DEBHELPER#
++
++if [ "$1" = "remove"  ]; then
++  ldconfig
++fi
++
